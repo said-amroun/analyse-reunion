@@ -7,26 +7,25 @@ import seaborn as sns
 
 file_path = r"C:\Users\maxen\Downloads\production-d-electricite-par-filiere-et-couts-de-production-au-pas-horairefiltré.csv"
 
-######################################################################################################
+
 
 
 def tracer_production_mensuelle_par_filiere(file_path):
     # Charger le fichier CSV
     df = pd.read_csv(file_path, sep=";", encoding="utf-8-sig")
 
-    # Convertir la colonne Date en datetime avec utc=True pour éviter le warning
+ 
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce", utc=True)
 
-    # Supprimer les lignes avec des dates non valides
+
     df = df.dropna(subset=["Date"])
 
-    # Extraire année et mois
     df["Mois"] = df["Date"].dt.to_period("M")
 
-    # Afficher les colonnes pour vérifier ce qui est présent
+
     colonnes_disponibles = df.columns.str.strip()
 
-    # Liste des colonnes de production attendues
+    
     colonnes_production = [
         "Thermique (MW)",
         "Bagasse/charbon (MW)",
@@ -36,18 +35,16 @@ def tracer_production_mensuelle_par_filiere(file_path):
         "Bioénergies (MW)"
     ]
 
-    # Filtrer les colonnes qui existent réellement dans le fichier
+
     colonnes_production_presentes = [col for col in colonnes_production if col in colonnes_disponibles.tolist()]
 
-    # Regrouper par mois et sommer les puissances (MW.h cumulés)
+    
     df_mensuel = df.groupby("Mois")[colonnes_production_presentes].sum()
 
-    # Tracer les courbes
     plt.figure(figsize=(12, 6))
     for col in colonnes_production_presentes:
         plt.plot(df_mensuel.index.to_timestamp(), df_mensuel[col], marker="o", label=col)
 
-    # Mise en forme du graphique
     plt.title("Évolution mensuelle de la production électrique par filière à La Réunion")
     plt.xlabel("Mois")
     plt.ylabel("Production mensuelle cumulée (MW.h)")
@@ -57,7 +54,7 @@ def tracer_production_mensuelle_par_filiere(file_path):
     plt.tight_layout()
     plt.show()
 
-    # Prévisions avec Prophet pour chaque filière disponible
+
     for filiere in colonnes_production_presentes:
         df_prophet = df_mensuel[[filiere]].reset_index()
         df_prophet.columns = ["ds", "y"]
@@ -69,7 +66,7 @@ def tracer_production_mensuelle_par_filiere(file_path):
         future = model.make_future_dataframe(periods=24, freq="M")
         forecast = model.predict(future)
 
-        # Tracer la prévision mensuelle
+
         plt.figure(figsize=(10, 6))
         plt.plot(df_prophet["ds"], df_prophet["y"], marker="o", label="Historique")
         plt.plot(forecast["ds"], forecast["yhat"], linestyle="--", label="Prévision")
@@ -82,7 +79,7 @@ def tracer_production_mensuelle_par_filiere(file_path):
         plt.tight_layout()
         plt.show()
 
-        # Tendance annuelle (pas de modèle Prophet ici, simple moyenne)
+    
         df_annee = df_prophet.copy()
         df_annee["Année"] = df_annee["ds"].dt.year
         tendance_annuelle = df_annee.groupby("Année")["y"].mean()
@@ -97,7 +94,7 @@ def tracer_production_mensuelle_par_filiere(file_path):
         plt.tight_layout()
         plt.show()
 
-        # Variation moyenne par mois (simple agrégation)
+        
         df_prophet["Mois"] = df_prophet["ds"].dt.month
         variation_mensuelle = df_prophet.groupby("Mois")["y"].mean()
 
